@@ -33,30 +33,64 @@ struct App {
 
 int main() {
     App app;
-    NSRunningApplication* nsApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+    NSRunningApplication* nsApp =
+        [[NSWorkspace sharedWorkspace] frontmostApplication];
 
     if (nsApp != nil) {
         app.name = [[nsApp localizedName] UTF8String];
-        app.bundleId =
-            ([nsApp bundleIdentifier] != nil) ? [[nsApp bundleIdentifier] UTF8String] : "Empty";
+        app.bundleId = ([nsApp bundleIdentifier] != nil)
+                           ? [[nsApp bundleIdentifier] UTF8String]
+                           : "Empty";
         app.pid = [nsApp processIdentifier];
 
         app.appRef = AXUIElementCreateApplication(app.pid);
         if (app.appRef == nullptr) {
-            std::cerr << "App Ref has nullptr, check permissions for possible solution"
-                      << std::endl;
+            std::cerr << "App Ref has nullptr, check permissions for possible solution" << std::endl;
             return 1;
         }
     }
 
-    // TODO: Look at logical roadmap of again, here is an error
     CFTypeRef menuBarRef;
-    AXError err = AXUIElementCopyAttributeValue(app.appRef, kAXMenuBarAttribute, &menuBarRef);
-    if (err == kAXErrorSuccess) {
-        AXUIElementRef menuBarElementRef = (AXUIElementRef)menuBarRef;
-        MenuBarItem item;
-        item.itemRef = menuBarElementRef;
-        app.items.push_back(item);
+    CFTypeRef childrenRef;
+
+    AXUIElementRef menuBarElementRef;
+    CFArrayRef childrenElements;
+
+    if (AXUIElementCopyAttributeValue(app.appRef, kAXMenuBarAttribute, &menuBarRef) == kAXErrorSuccess) {
+        menuBarElementRef = (AXUIElementRef)menuBarRef;
+
+        if (AXUIElementCopyAttributeValue(menuBarElementRef, kAXChildrenAttribute, &childrenRef) == kAXErrorSuccess) {
+            childrenElements = (CFArrayRef)childrenRef;
+
+            for (int i = 0; i < CFArrayGetCount(childrenElements); i++) {
+                MenuBarItem item;
+                AXUIElementRef itemRef = (AXUIElementRef)CFArrayGetValueAtIndex(childrenElements, i);
+                CFTypeRef titleRef;
+
+                if (AXUIElementCopyAttributeValue(itemRef, kAXTitleAttribute, &titleRef) == kAXErrorSuccess) {
+                    CFStringRef stringTitleRef = (CFStringRef)titleRef;
+                    char titleBuffer[256] = {0};
+
+                    if (CFStringGetCString(stringTitleRef, titleBuffer, sizeof(titleBuffer), kCFStringEncodingUTF8)) {
+                        item.title = titleBuffer;
+                    } else {
+                        item.title = "nothing";
+                    }
+
+                    CFRelease(stringTitleRef);
+                }
+                CFRetain(itemRef);
+                item.itemRef = itemRef;
+
+                app.items.push_back(item);
+            }
+            CFRelease(childrenElements);
+        }
+        CFRelease(menuBarElementRef);
+    }
+
+    for (int i = 0; i < app.items.size(); i++) {
+        std::cout << app.items[i].title << std::endl;
     }
 
     return 0;
