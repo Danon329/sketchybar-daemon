@@ -1,6 +1,9 @@
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
+#include <netdb.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <algorithm>
 #include <cerrno>
@@ -24,7 +27,7 @@ struct App {
     std::string name;
     std::string bundleId;
     pid_t pid;
-    int currentSpaceIdx;
+    std::string currentSpaceIdx;
 
     AXUIElementRef appRef{nullptr};
     std::vector<MenuBarItem> items;
@@ -34,41 +37,45 @@ struct App {
 
     void createPopup() {
         std::string command = "";
+        std::string targetSpace = "space." + currentSpaceIdx;
+
+        command += "--set popup.slot.back position=popup." + targetSpace + " ";
 
         for (int i = 1; i <= 20; i++) {
             int vectorIdx = i - 1;
             std::string slotName = "popup.slot." + std::to_string(i);
 
             if (vectorIdx < items.size()) {
-                command += "--set " + slotName + " label=\"" + items[vectorIdx].title + "\" drawing=on ";
+                command += "--set " + slotName + " position=popup." + targetSpace + " label=\"" + items[vectorIdx].title + "\" drawing=on ";
             } else {
-                command += "--set " + slotName + " drawing=off";
+                command += "--set " + slotName + " drawing=off ";
             }
         }
 
-        std::string targetSpace = "space." + std::to_string(currentSpaceIdx);
-        command += "--set " + targetSpace + " drawing=on";
+        command += "--set " + targetSpace + " popup.drawing=on";
 
         sketchybar(command.data());
+        std::cout << "sent command to sketchybar: " << command << std::endl;
     }
 
     void setPopupInvisible() {
-        std::string command = "--set space." + std::to_string(currentSpaceIdx) + " popup.drawing=off";
+        std::string command = "--set space." + currentSpaceIdx + " popup.drawing=off";
         sketchybar(command.data());
     }
 
     void setBackButtonVisible() {
-        std::string command = "--set space." + std::to_string(currentSpaceIdx) + " popup.slot.back.drawing=on";
+        std::string command = "--set popup.slot.back drawing=on";
         sketchybar(command.data());
     }
 
     void setBackButtonInvisible() {
-        std::string command = "--set space." + std::to_string(currentSpaceIdx) + " popup.slot.back.drawing=off";
+        std::string command = "--set popup.slot.back drawing=off";
         sketchybar(command.data());
     }
 
     void clearItems() {
         for (int i = 0; i < items.size(); i++) {
+            items[i].title = "";
             if (items[i].itemRef != nullptr) {
                 CFRelease(items[i].itemRef);
             }
@@ -76,6 +83,7 @@ struct App {
     }
 
     void release() {
+        clearItems();
         if (appRef) {
             CFRelease(appRef);
             appRef = nullptr;
@@ -91,12 +99,13 @@ struct App {
             menuBarRef = nullptr;
         }
 
-        clearItems();
-
         name.clear();
         bundleId.clear();
         pid = -1;
-        currentSpaceIdx = -1;
+        currentSpaceIdx = "";
+
+        setBackButtonInvisible();
+        setPopupInvisible();
     }
 
     ~App() {
@@ -200,7 +209,8 @@ std::vector<MenuBarItem> getParentItems(AXUIElementRef& currentParentRef) {
 
             if (AXUIElementCopyAttributeValue(holdValue, kAXRoleAttribute, &checkAttributeRef) == kAXErrorSuccess) {
                 CFStringRef type = (CFStringRef)checkAttributeRef;
-                if (CFStringCompare(type, kAXMenuItemRole, 0) == kCFCompareEqualTo) {
+                if (CFStringCompare(type, kAXMenuItemRole, 0) == kCFCompareEqualTo ||
+                    CFStringCompare(type, kAXMenuBarRole, 0) == kCFCompareEqualTo) {
                     CFRelease(type);
                     isParentItem = true;
                     break;
@@ -269,20 +279,26 @@ bool press(AXUIElementRef element) {
 
 int main(int argc, char** argv) {
     const char* pipePath = "/tmp/sketchybar_daemon.fifo";
+    unlink(pipePath);
     if (mkfifo(pipePath, 0666) == -1) {
         if (errno != EEXIST) {
             std::cerr << "Failed to create FIFO pipe" << std::endl;
-            return 1;
         }
+    }
+
+    int dummyFd = open(pipePath, O_WRONLY | O_NONBLOCK);
+
+    int fd = open(pipePath, O_RDONLY);
+    if (fd < 0) {
+        std::cerr << "Failed to open FIFO for reading" << std::endl;
+        return 1;
     }
 
     App app;
 
     while (true) {
-        int fd = open(pipePath, O_RDONLY);
         char buffer[128] = {0};
         ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
-        close(fd);
 
         if (bytesRead <= 0) {
             continue;
@@ -294,44 +310,119 @@ int main(int argc, char** argv) {
         event.erase(event.find_last_not_of(" \n\r\t") + 1);
 
         if (event.rfind("SPACE", 0) == 0) {
-            NSRunningApplication* nsApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+            app.release();
+            std::string numString = event.substr(6);
+            app.currentSpaceIdx = numString;
+            // app.name = [[nsApp localizedName] UTF8String];
+            // app.bundleId = ([nsApp bundleIdentifier] != nil) ? [[nsApp bundleIdentifier] UTF8String] : "Empty";
+            // app.pid = [nsApp processIdentifier];
+            std::string socketPath = "/tmp/bobko.aerospace-daniel.sock";
 
-            if (nsApp != nil) {
+            struct sockaddr_un addr;
+            std::memset(&addr, 0, sizeof(struct sockaddr_un));
+            addr.sun_family = AF_UNIX;
+
+            if (socketPath.length() >= sizeof(addr.sun_path)) {
+                std::cerr << "Socket path to long" << std::endl;
+                return -1;
+            }
+            std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+
+            int sockFd = socket(AF_UNIX, SOCK_STREAM, 0);
+            if (sockFd < 0) {
+                std::cerr << "Failed to create socket" << std::endl;
                 app.release();
-                app.name = [[nsApp localizedName] UTF8String];
-                app.bundleId = ([nsApp bundleIdentifier] != nil) ? [[nsApp bundleIdentifier] UTF8String] : "Empty";
-                app.pid = [nsApp processIdentifier];
+                continue;
+            }
 
+            if (connect(sockFd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) < 0) {
+                std::cerr << "Failed to connect to socket" << std::endl;
+                close(sockFd);
+                app.release();
+                continue;
+            }
+
+            std::string jsonPayload =
+                "{"
+                "\"args\":["
+                "\"list-windows\","
+                "\"--focused\","
+                "\"--format\",\"%{app-pid}\""
+                "],"
+                "\"stdin\":\"\""
+                "}\n";
+
+            ssize_t bytesWritten = write(sockFd, jsonPayload.c_str(), jsonPayload.length());
+
+            if (bytesWritten < 0) {
+                std::cerr << "Something went wrong while writing" << std::endl;
+                app.release();
+                continue;
+            }
+
+            std::vector<char> buffer(4096);
+            ssize_t bytesRead = read(sockFd, buffer.data(), buffer.size() - 1);
+
+            if (bytesRead > 0) {
+                buffer[bytesRead] = '\0';
+                std::string jsonStr(buffer.data());
+
+                std::size_t startPos = jsonStr.find("\"stdout\":\"");
+                if (startPos != std::string::npos) {
+                    startPos += 10;
+                    std::size_t endPos = jsonStr.find("\"", startPos);
+
+                    if (endPos != std::string::npos) {
+                        std::string pidStr = jsonStr.substr(startPos, endPos - startPos);
+
+                        std::size_t nPos = pidStr.find("\\n");
+                        if (nPos != std::string::npos) pidStr.erase(nPos);
+
+                        pidStr.erase(pidStr.find_last_not_of(" \n\r\t") + 1);
+
+                        if (!pidStr.empty()) {
+                            app.pid = std::stoi(pidStr);
+                        } else if (bytesRead == 0) {
+                            std::cerr << "Server closed without returning data" << std::endl;
+                        } else {
+                            std::cerr << "Some kind of read error" << std::endl;
+                        }
+                    }
+                }
+            }
+
+            close(sockFd);
+
+            if (app.pid > 0) {
                 app.appRef = AXUIElementCreateApplication(app.pid);
                 if (app.appRef == nullptr) {
                     std::cerr << "App Ref has nullptr, check permissions for possible solution" << std::endl;
-                    return 1;
+                    return -1;
                 }
-
-                CFTypeRef menuBar;
-                if (AXUIElementCopyAttributeValue(app.appRef, kAXMenuBarAttribute, &menuBar) == kAXErrorSuccess) {
-                    app.menuBarRef = (AXUIElementRef)menuBar;
-                    app.currentParentRef = app.menuBarRef;
-                }
-
-                std::string numString = event.substr(6);
-                app.currentSpaceIdx = std::stoi(numString);
-
-                app.items = getMenuChildren(app.currentParentRef);
-                app.createPopup();
+            } else {
+                app.release();
+                continue;
             }
+
+            CFTypeRef menuBar;
+            if (AXUIElementCopyAttributeValue(app.appRef, kAXMenuBarAttribute, &menuBar) == kAXErrorSuccess) {
+                app.menuBarRef = (AXUIElementRef)menuBar;
+                app.currentParentRef = app.menuBarRef;
+            }
+
+            app.items = getMenuChildren(app.currentParentRef);
+            app.createPopup();
         } else if (event.rfind("SLOT", 0) == 0) {
             std::string slot = event.substr(5);
             if (slot == "BACK") {
                 if (app.currentParentRef == app.menuBarRef) {
-                    app.setBackButtonInvisible();
                     std::cerr << "Back Button was not invisible" << std::endl;
                     continue;
                 }
                 app.clearItems();
                 app.items = getParentItems(app.currentParentRef);
 
-                if (app.currentParentRef == app.menuBarRef) {
+                if (CFEqual(app.currentParentRef, app.menuBarRef)) {
                     app.setBackButtonInvisible();
                 }
 
@@ -374,18 +465,5 @@ int main(int argc, char** argv) {
             }
         }
     }
-
-    app.clearItems();
-    app.items = getMenuChildren(app.menuBarRef);
-
-    for (int i = 0; i < app.items.size(); i++) {
-        std::cout << app.items[i].title << std::endl;
-    }
-
-    std::string message = "--add item menu_test left "
-                          "--set menu_test label=\"Hello from Daemon\" "
-                          "--set menu_test drawing=true";
-    sketchybar(message.data());
-
     return 0;
 }
