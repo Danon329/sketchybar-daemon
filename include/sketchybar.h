@@ -144,9 +144,9 @@ static inline char* mach_send_message(mach_port_t port, char* message, uint32_t 
   mach_receive_message(response_port, &buffer, true);
 
   if (buffer.message.descriptor.address) {
-    g_response = (char*)realloc(g_response, strlen(buffer.message.descriptor.address) + 1);
+    g_response = (char*)realloc(g_response, strlen((char*)buffer.message.descriptor.address) + 1);
     memcpy(g_response, buffer.message.descriptor.address,
-           strlen(buffer.message.descriptor.address) + 1);
+           strlen((char*)buffer.message.descriptor.address) + 1);
   } else {
     g_response = (char*)realloc(g_response, 1);
     *g_response = '\0';
