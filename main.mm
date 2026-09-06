@@ -36,7 +36,7 @@ struct App {
     AXUIElementRef currentParentRef{nullptr};
 
     void createPopup() {
-        std::string command = "";
+        std::string command;
         std::string targetSpace = "space." + currentSpaceIdx;
 
         command += "--set popup.slot.back position=popup." + targetSpace + " ";
@@ -58,7 +58,7 @@ struct App {
         std::cout << "sent command to sketchybar: " << command << std::endl;
     }
 
-    void setPopupInvisible() {
+    void setPopupInvisible() const {
         std::string command = "--set space." + currentSpaceIdx + " popup.drawing=off";
         sketchybar(command.data());
     }
@@ -310,7 +310,6 @@ int main(int argc, char** argv) {
         event.erase(event.find_last_not_of(" \n\r\t") + 1);
 
         if (event.rfind("SPACE", 0) == 0) {
-            app.release();
             std::string numString = event.substr(6);
             app.currentSpaceIdx = numString;
             // app.name = [[nsApp localizedName] UTF8String];
@@ -380,6 +379,7 @@ int main(int argc, char** argv) {
 
                         pidStr.erase(pidStr.find_last_not_of(" \n\r\t") + 1);
 
+                        // TODO: Change that into a try catch system with exception& and .what()
                         if (!pidStr.empty()) {
                             app.pid = std::stoi(pidStr);
                         } else if (bytesRead == 0) {
@@ -415,6 +415,7 @@ int main(int argc, char** argv) {
         } else if (event.rfind("SLOT", 0) == 0) {
             std::string slot = event.substr(5);
             if (slot == "BACK") {
+                // TODO: Check why we always return to first level
                 if (app.currentParentRef == app.menuBarRef) {
                     std::cerr << "Back Button was not invisible" << std::endl;
                     continue;
