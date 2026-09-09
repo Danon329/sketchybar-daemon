@@ -279,6 +279,7 @@ bool press(AXUIElementRef element) {
 }
 
 void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void* info) {
+    // TODO: Going back breaks stuff????
     App* app = static_cast<App*>(info);
     int fd = CFFileDescriptorGetNativeDescriptor(descRef);
 
@@ -287,6 +288,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
 
     if (bytesRead <= 0) {
         std::cerr << "bytesRead smaller 0" << std::endl;
+        CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
         return;
     }
 
@@ -312,9 +314,12 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                     app->appRef = AXUIElementCreateApplication(app->pid);
                     if (app->appRef == nullptr) {
                         std::cerr << "App Ref has nullptr, check permissions for possible solution" << std::endl;
+                        CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                        return;
                     }
                 } else {
                     app->release();
+                    CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                     return;
                 }
 
@@ -342,6 +347,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                 }
 
                 app->createPopup();
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                 return;
             }
 
@@ -350,9 +356,11 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                 vectorIdx = std::stoi(slot) - 1;
             } catch (const std::invalid_argument& e) {
                 std::cerr << "Invalid string parsed from slot, it is not a number" << std::endl;
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                 return;
             } catch (const std::out_of_range& e) {
                 std::cerr << "Number out of bounds for current slot" << std::endl;
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                 return;
             }
 
@@ -360,7 +368,8 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                 std::cerr << "[STATE ERROR] SketchyBar requested slot " << slot
                           << " (" << vectorIdx << "), but items.size() is only "
                           << app->items.size() << std::endl;
-                return;  // Log error and prevent crash
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                return;
             }
 
             if (press(app->items[vectorIdx].itemRef)) {
