@@ -36,7 +36,7 @@ struct App {
     AXUIElementRef menuBarRef{nullptr};
     AXUIElementRef currentParentRef{nullptr};
 
-    void createPopup() {
+    void createPopup(std::string spacePopupCommand) {
         std::string command;
         std::string targetSpace = "space." + currentSpaceIdx;
 
@@ -53,7 +53,7 @@ struct App {
             }
         }
 
-        command += "--set " + targetSpace + " popup.drawing=on";
+        command += "--set " + targetSpace + " popup.drawing=" + spacePopupCommand;
 
         sketchybar(command.data());
         // std::cout << "sent command to sketchybar: " << command << std::endl;
@@ -330,7 +330,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                 }
 
                 app->items = getMenuChildren(app->currentParentRef);
-                app->createPopup();
+                app->createPopup("toggle");
             }
         } else if (event.rfind("SLOT", 0) == 0) {
             std::string slot = event.substr(5);
@@ -346,7 +346,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                     app->setBackButtonInvisible();
                 }
 
-                app->createPopup();
+                app->createPopup("on");
                 CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                 return;
             }
@@ -385,7 +385,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
                 app->clearItems();
                 app->items = nextChildren;
                 app->setBackButtonVisible();
-                app->createPopup();
+                app->createPopup("on");
             }
         }
     }
