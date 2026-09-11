@@ -12,7 +12,9 @@ For a useful implmentation example look at my sketchybar dotfiles and the spaces
 
 ### Example
 ![App Name](/examples/beginning.png)
+
 ![First Level](/examples/first_level.png)
+
 ![Second Level](/examples/second_level.png)
 
 Like you can see, it is fairly bare bones. It will be an ongoing project but you are still welcome to use it.
