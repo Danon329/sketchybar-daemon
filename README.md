@@ -11,7 +11,9 @@ That way you can press on the items inside to execute them or get their own chil
 For a useful implmentation example look at my sketchybar dotfiles and the spaces script [here](https://github.com/Danon329/sketchybarConf/blob/main/plugins/items/spaces.lua)
 
 ### Example
-![Daemon usage example](/examples/showcase.ogv)
+![App Name](/examples/beginning.png)
+![First Level](/examples/first_level.png)
+![Second Level](/examples/second_level.png)
 
 Like you can see, it is fairly bare bones. It will be an ongoing project but you are still welcome to use it.
 
