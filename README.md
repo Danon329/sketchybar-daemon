@@ -8,7 +8,7 @@ The application queries for the first Menu level once it gets a command from ske
 It serializes the app information in a struct, that way it doesn't need to query for the app again.
 That way you can press on the items inside to execute them or get their own children for the next level.
 
-For a useful implmentation example look at my sketchybar dotfiles and the spaces script [here](https://github.com/Danon329/sketchybarConf/blob/main/plugins/items/spaces.lua)
+For a useful implementation example look at my sketchybar dotfiles and the spaces script [here](https://github.com/Danon329/sketchybarConf/blob/main/plugins/items/spaces.lua)
 
 ### Example
 ![App Name](/examples/beginning.png)
