@@ -56,7 +56,7 @@ struct App {
         command += "--set " + targetSpace + " popup.drawing=on";
 
         sketchybar(command.data());
-        std::cout << "sent command to sketchybar: " << command << std::endl;
+        // std::cout << "sent command to sketchybar: " << command << std::endl;
     }
 
     void setPopupInvisible() const {
@@ -210,7 +210,7 @@ std::vector<MenuBarItem> getParentItems(AXUIElementRef& currentParentRef) {
 
             if (AXUIElementCopyAttributeValue(holdValue, kAXRoleAttribute, &checkAttributeRef) == kAXErrorSuccess) {
                 CFStringRef type = (CFStringRef)checkAttributeRef;
-                if (CFStringCompare(type, kAXMenuItemRole, 0) == kCFCompareEqualTo ||
+                if (CFStringCompare(type, kAXMenuRole, 0) == kCFCompareEqualTo ||
                     CFStringCompare(type, kAXMenuBarRole, 0) == kCFCompareEqualTo) {
                     CFRelease(type);
                     isParentItem = true;
