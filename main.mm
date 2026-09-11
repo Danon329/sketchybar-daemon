@@ -279,7 +279,6 @@ bool press(AXUIElementRef element) {
 }
 
 void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void* info) {
-    // TODO: Going back breaks stuff????
     App* app = static_cast<App*>(info);
     int fd = CFFileDescriptorGetNativeDescriptor(descRef);
 
