@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <ios>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -18,6 +19,9 @@
 extern "C" {
 #include "sketchybar.h"
 }
+
+bool elementHasChildren(AXUIElementRef element);
+bool press(AXUIElementRef element);
 
 struct MenuBarItem {
     std::string title;
@@ -47,7 +51,19 @@ struct App {
             std::string slotName = "popup.slot." + std::to_string(i);
 
             if (vectorIdx < items.size()) {
-                command += "--set " + slotName + " position=popup." + targetSpace + " label=\"" + items[vectorIdx].title + "\" drawing=on ";
+                if (elementHasChildren(items[vectorIdx].itemRef)) {
+                    command += "--set " + slotName +
+                               " position=popup." + targetSpace +
+                               " icon=\"" + items[vectorIdx].title + "\"" +
+                               " label=\">\"" +
+                               " drawing=on ";
+                } else {
+                    command += "--set " + slotName +
+                               " position=popup." + targetSpace +
+                               " icon=\"" + items[vectorIdx].title + "\"" +
+                               " label=\"\"" +
+                               " drawing=on ";
+                }
             } else {
                 command += "--set " + slotName + " drawing=off ";
             }
@@ -56,7 +72,6 @@ struct App {
         command += "--set " + targetSpace + " popup.drawing=" + spacePopupCommand;
 
         sketchybar(command.data());
-        // std::cout << "sent command to sketchybar: " << command << std::endl;
     }
 
     void setPopupInvisible() const {
@@ -64,12 +79,12 @@ struct App {
         sketchybar(command.data());
     }
 
-    void setBackButtonVisible() {
+    void setBackButtonVisible() const {
         std::string command = "--set popup.slot.back drawing=on";
         sketchybar(command.data());
     }
 
-    void setBackButtonInvisible() {
+    void setBackButtonInvisible() const {
         std::string command = "--set popup.slot.back drawing=off";
         sketchybar(command.data());
     }
@@ -103,7 +118,7 @@ struct App {
         name.clear();
         bundleId.clear();
         pid = -1;
-        currentSpaceIdx = "";
+        currentSpaceIdx.clear();
 
         setBackButtonInvisible();
         setPopupInvisible();
@@ -183,10 +198,12 @@ std::vector<MenuBarItem> getMenuChildren(AXUIElementRef parent) {
                 item.title = "Error, couldn't get a title at all";
             }
 
-            CFRetain(itemRef);
-            item.itemRef = itemRef;
+            if (item.title.size() > 0) {
+                CFRetain(itemRef);
+                item.itemRef = itemRef;
 
-            items.push_back(item);
+                items.push_back(item);
+            }
         }
         CFRelease(childrenElements);
     }
@@ -241,19 +258,25 @@ std::vector<MenuBarItem> getParentItems(AXUIElementRef& currentParentRef) {
     return items;
 }
 
+bool elementHasChildren(AXUIElementRef element) {
+    bool hasChildren = false;
+    CFTypeRef childrenElements = nullptr;
+    if (AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, &childrenElements) == kAXErrorSuccess) {
+        CFArrayRef children = (CFArrayRef)childrenElements;
+        // Array might not be null but still pressable
+        if (CFArrayGetCount(children) > 0) {
+            hasChildren = true;
+        }
+    }
+    CFRelease(childrenElements);
+
+    return hasChildren;
+}
+
 bool press(AXUIElementRef element) {
     if (!element) return false;
 
-    CFTypeRef childrenCheck;
-    if (AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, &childrenCheck) == kAXErrorSuccess) {
-        CFArrayRef children = (CFArrayRef)childrenCheck;
-        if (CFArrayGetCount(children) > 0) {
-            CFRelease(children);
-            return false;
-        }
-
-        CFRelease(children);
-    }
+    if (elementHasChildren(element)) return false;
 
     CFArrayRef possibleActions;
     if (AXUIElementCopyActionNames(element, &possibleActions) == kAXErrorSuccess) {
