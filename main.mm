@@ -1,19 +1,9 @@
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
 #import <CoreFoundation/CoreFoundation.h>
-#include <netdb.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/un.h>
-#include <unistd.h>
-#include <algorithm>
-#include <cerrno>
-#include <ios>
 #include <iostream>
-#include <iterator>
-#include <stdexcept>
 #include <string>
-#include <system_error>
 #include <vector>
 
 extern "C" {
