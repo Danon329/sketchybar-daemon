@@ -46,6 +46,7 @@ struct App {
 
         command += "--set popup.slot.back position=popup." + targetSpace + " ";
 
+        // TODO: What if more then 20 --> create button next (and change back functionality for that)
         for (int i = 1; i <= 20; i++) {
             int vectorIdx = i - 1;
             std::string slotName = "popup.slot." + std::to_string(i);
