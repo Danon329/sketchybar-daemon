@@ -9,7 +9,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options($<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
 
 set(SRC
-	main.mm
+	src/main.mm
+	src/App.mm
+	src/App.h
 )
 
 add_executable(${PROJECT_NAME} ${SRC})
