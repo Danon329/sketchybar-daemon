@@ -259,8 +259,6 @@ void App::createPopup(std::string spacePopupCommand) {
 
     command += "--set " + targetSpace + " popup.drawing=" + spacePopupCommand;
 
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
     sketchybar(command.data());
 }
 
@@ -272,47 +270,29 @@ void App::setPopupInvisible() const {
 void App::setBackButtonVisible() const {
     std::string command = "--set popup.slot.back drawing=on";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
 
 void App::setBackButtonInvisible() const {
     std::string command = "--set popup.slot.back drawing=off";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
 
 void App::setNextButtonVisible() const {
     std::string command = "--set popup.slot.next_page drawing=on";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
 
 void App::setNextButtonInvisible() const {
     std::string command = "--set popup.slot.next_page drawing=off";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
 
 void App::setPreviousButtonVisible() const {
     std::string command = "--set popup.slot.previous_page drawing=on";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
 
 void App::setPreviousButtonInvisible() const {
     std::string command = "--set popup.slot.previous_page drawing=off";
     sketchybar(command.data());
-
-    std::cout << command << std::endl;
-    std::cout << "========================" << std::endl;
 }
