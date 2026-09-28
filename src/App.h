@@ -29,6 +29,10 @@ public:
 	AXUIElementRef appRef = nullptr;
 	std::vector<MenuBarItem> items;
 
+	// item handling
+	int currentFirstIndex = 0;
+	bool finalPage = false;
+
 	// Item pointers for upmost level and current parent level
 	AXUIElementRef menuBarRef = nullptr;
 	AXUIElementRef currentParentRef = nullptr;
@@ -53,4 +57,8 @@ public:
 	void setPopupInvisible() const;
 	void setBackButtonVisible() const;
 	void setBackButtonInvisible() const;
+	void setNextButtonVisible() const;
+	void setNextButtonInvisible() const;
+	void setPreviousButtonVisible() const;
+	void setPreviousButtonInvisible() const;
 };

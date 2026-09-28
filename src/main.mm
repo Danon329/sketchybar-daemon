@@ -56,22 +56,78 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
 
                 app->items = app->getMenuChildren();
                 app->createPopup("toggle");
+
+                if (app->items.size() > 20) {
+                    app->setNextButtonVisible();
+                } else {
+                    app->finalPage = true;
+                }
             }
         } else if (event.rfind("SLOT", 0) == 0) {
             std::string slot = event.substr(5);
             if (slot == "BACK") {
-                // TODO: Check why we always return to first level
                 if (app->currentParentRef == app->menuBarRef) {
                     std::cerr << "Back Button was not invisible" << std::endl;
                 }
                 app->clearItems();
                 app->items = app->getParentItems();
 
+                if (app->items.size() < 20) {
+                    app->setNextButtonInvisible();
+                    app->setPreviousButtonInvisible();
+                }
+
                 if (CFEqual(app->currentParentRef, app->menuBarRef)) {
                     app->setBackButtonInvisible();
                 }
 
                 app->createPopup("on");
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                return;
+            } else if (slot == "NEXT") {
+                // Catch if there shouldn't be a next page
+                if (app->items.size() <= 20 || app->finalPage) {
+                    std::cerr << "Next Button shouldn't be even visible" << std::endl;
+                    app->setNextButtonInvisible();
+
+                    CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                    return;
+                }
+
+                if (!app->finalPage) {
+                    app->currentFirstIndex += 20;
+                    app->setPreviousButtonVisible();
+                    app->createPopup("on");
+
+                    if ((app->currentFirstIndex + 20) >= app->items.size()) {
+                        app->finalPage = true;
+                        app->setNextButtonInvisible();
+                    }
+                }
+
+                CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                return;
+            } else if (slot == "PREVIOUS") {
+                if (app->currentFirstIndex < 20) {
+                    std::cerr << "Previous Button shouldn't be visible" << std::endl;
+                    app->setPreviousButtonInvisible();
+
+                    CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
+                    return;
+                }
+
+                app->currentFirstIndex -= 20;
+                app->setNextButtonVisible();
+                app->createPopup("on");
+
+                if (app->finalPage) {
+                    app->finalPage = false;
+                }
+
+                if (app->currentFirstIndex < 20) {
+                    app->setPreviousButtonInvisible();
+                }
+
                 CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
                 return;
             }
@@ -109,6 +165,11 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
 
                 app->clearItems();
                 app->items = nextChildren;
+
+                if (app->items.size() > 20) {
+                    app->setNextButtonVisible();
+                }
+
                 app->setBackButtonVisible();
                 app->createPopup("on");
             }
@@ -118,7 +179,7 @@ void fifoCallback(CFFileDescriptorRef descRef, CFOptionFlags callbackTypes, void
     CFFileDescriptorEnableCallBacks(descRef, kCFFileDescriptorReadCallBack);
 }
 
-int main(int argc, char** argv) {
+int main() {
     const char* pipePath = "/tmp/sketchybar_daemon.fifo";
 
     if (mkfifo(pipePath, 0666) == -1) {

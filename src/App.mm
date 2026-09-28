@@ -1,7 +1,12 @@
 #include "App.h"
+#include <string>
+#include "sketchybar.h"
 
 // GC functionality
 void App::clearItems() {
+    this->currentFirstIndex = 0;
+    this->finalPage = false;
+
     for (int i = 0; i < items.size(); i++) {
         items[i].title = "";
         if (items[i].itemRef != nullptr) {
@@ -33,6 +38,8 @@ void App::release() {
 
     this->currentSpaceIdx.clear();
 
+    this->setNextButtonInvisible();
+    this->setPreviousButtonInvisible();
     this->setBackButtonInvisible();
     this->setPopupInvisible();
 }
@@ -224,23 +231,24 @@ void App::createPopup(std::string spacePopupCommand) {
     std::string targetSpace = "space." + currentSpaceIdx;
 
     command += "--set popup.slot.back position=popup." + targetSpace + " ";
+    command += "--set popup.slot.next_page position=popup." + targetSpace + " ";
+    command += "--set popup.slot.previous_page position=popup." + targetSpace + " ";
 
-    // TODO: What if more then 20 --> create button next (and change back functionality for that)
-    for (int i = 1; i <= 20; i++) {
-        int vectorIdx = i - 1;
-        std::string slotName = "popup.slot." + std::to_string(i);
+    for (int i = 0; i < 20; i++) {
+        int itemIndex = this->currentFirstIndex + i;
+        std::string slotName = "popup.slot." + std::to_string(i + 1);
 
-        if (vectorIdx < items.size()) {
-            if (elementHasChildren(items[vectorIdx].itemRef)) {
+        if (itemIndex < items.size()) {
+            if (elementHasChildren(items[itemIndex].itemRef)) {
                 command += "--set " + slotName +
                            " position=popup." + targetSpace +
-                           " icon=\"" + items[vectorIdx].title + "\"" +
+                           " icon=\"" + items[itemIndex].title + "\"" +
                            " label=\">\"" +
                            " drawing=on ";
             } else {
                 command += "--set " + slotName +
                            " position=popup." + targetSpace +
-                           " icon=\"" + items[vectorIdx].title + "\"" +
+                           " icon=\"" + items[itemIndex].title + "\"" +
                            " label=\"\"" +
                            " drawing=on ";
             }
@@ -251,6 +259,8 @@ void App::createPopup(std::string spacePopupCommand) {
 
     command += "--set " + targetSpace + " popup.drawing=" + spacePopupCommand;
 
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
     sketchybar(command.data());
 }
 
@@ -262,9 +272,47 @@ void App::setPopupInvisible() const {
 void App::setBackButtonVisible() const {
     std::string command = "--set popup.slot.back drawing=on";
     sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
 }
 
 void App::setBackButtonInvisible() const {
     std::string command = "--set popup.slot.back drawing=off";
     sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
+}
+
+void App::setNextButtonVisible() const {
+    std::string command = "--set popup.slot.next_page drawing=on";
+    sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
+}
+
+void App::setNextButtonInvisible() const {
+    std::string command = "--set popup.slot.next_page drawing=off";
+    sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
+}
+
+void App::setPreviousButtonVisible() const {
+    std::string command = "--set popup.slot.previous_page drawing=on";
+    sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
+}
+
+void App::setPreviousButtonInvisible() const {
+    std::string command = "--set popup.slot.previous_page drawing=off";
+    sketchybar(command.data());
+
+    std::cout << command << std::endl;
+    std::cout << "========================" << std::endl;
 }
