@@ -1,6 +1,4 @@
 #include "App.h"
-#include <string>
-#include "sketchybar.h"
 
 // GC functionality
 void App::clearItems() {
